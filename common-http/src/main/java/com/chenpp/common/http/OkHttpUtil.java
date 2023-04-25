@@ -2,13 +2,18 @@ package com.chenpp.common.http;
 
 import com.alibaba.fastjson.JSONArray;
 import lombok.extern.slf4j.Slf4j;
-//import okhttp3.*;
-//import okio.BufferedSink;
-//import okio.GzipSink;
-//import okio.Okio;
+import okhttp3.*;
+import okio.BufferedSink;
+import okio.GzipSink;
+import okio.Okio;
 import org.jetbrains.annotations.NotNull;
+import org.omg.PortableInterceptor.Interceptor;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
