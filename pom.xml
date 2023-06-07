@@ -12,6 +12,7 @@
         <module>common-dependencies</module>
         <module>common-redis</module>
         <module>common-http</module>
+        <module>common-pf4j</module>
     </modules>
     <packaging>pom</packaging>
 
