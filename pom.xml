@@ -13,6 +13,8 @@
         <module>common-redis</module>
         <module>common-http</module>
         <module>common-pf4j</module>
+        <module>common-elasticsearch</module>
+        <module>common-bigdata</module>
     </modules>
     <packaging>pom</packaging>
 
