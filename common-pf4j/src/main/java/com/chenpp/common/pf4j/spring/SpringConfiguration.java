@@ -1,4 +1,4 @@
-package com.chenpp.common.pf4j;
+package com.chenpp.common.pf4j.spring;
 
 import org.pf4j.spring.SpringPluginManager;
 import org.springframework.context.annotation.Bean;

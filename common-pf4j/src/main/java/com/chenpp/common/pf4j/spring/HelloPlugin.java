@@ -1,4 +1,4 @@
-package com.chenpp.common.pf4j;
+package com.chenpp.common.pf4j.spring;
 
 import lombok.SneakyThrows;
 import org.pf4j.PluginWrapper;
