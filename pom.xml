@@ -15,6 +15,7 @@
         <module>common-pf4j</module>
         <module>common-elasticsearch</module>
         <module>common-bigdata</module>
+        <module>common-code</module>
     </modules>
     <packaging>pom</packaging>
 
@@ -28,6 +29,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
+            <version>1.7.36</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>

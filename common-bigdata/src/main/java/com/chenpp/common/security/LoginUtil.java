@@ -14,6 +14,10 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * @author April.Chen
+ * @date 2023/11/6 10:37 上午
+ */
 public class LoginUtil {
     /**
      * java security login file path
@@ -47,24 +51,24 @@ public class LoginUtil {
     private static final String ZOOKEEPER_SERVER_PRINCIPAL_KEY = "zookeeper.server.principal";
 
     private static final String LOGIN_FAILED_CAUSE_PASSWORD_WRONG
-        = "(wrong password) keytab file and user not match, you can kinit -k -t keytab user in client server to check";
+            = "(wrong password) keytab file and user not match, you can kinit -k -t keytab user in client server to check";
 
     private static final String LOGIN_FAILED_CAUSE_TIME_WRONG
-        = "(clock skew) time of local server and remote server not match, please check ntp to remote server";
+            = "(clock skew) time of local server and remote server not match, please check ntp to remote server";
 
     private static final String LOGIN_FAILED_CAUSE_AES256_WRONG
-        = "(aes256 not support) aes256 not support by default jdk/jre, need copy local_policy.jar and US_export_policy.jar from remote server in path /opt/huawei/Bigdata/jdk/jre/lib/security";
+            = "(aes256 not support) aes256 not support by default jdk/jre, need copy local_policy.jar and US_export_policy.jar from remote server in path /opt/huawei/Bigdata/jdk/jre/lib/security";
 
     private static final String LOGIN_FAILED_CAUSE_PRINCIPAL_WRONG
-        = "(no rule) principal format not support by default, need add property hadoop.security.auth_to_local(in core-site.xml) value RULE:[1:$1] RULE:[2:$1]";
+            = "(no rule) principal format not support by default, need add property hadoop.security.auth_to_local(in core-site.xml) value RULE:[1:$1] RULE:[2:$1]";
 
     private static final String LOGIN_FAILED_CAUSE_TIME_OUT
-        = "(time out) can not connect to kdc server or there is fire wall in the network";
+            = "(time out) can not connect to kdc server or there is fire wall in the network";
 
     private static final boolean IS_IBM_JDK = System.getProperty("java.vendor").contains("IBM");
 
     public synchronized static void login(String userPrincipal, String userKeytabPath, String krb5ConfPath,
-        Configuration conf) throws IOException {
+                                          Configuration conf) throws IOException {
         // 1.check input parameters
         if ((userPrincipal == null) || (userPrincipal.length() <= 0)) {
             LOG.error("input userPrincipal is invalid.");
@@ -123,9 +127,9 @@ public class LoginUtil {
     private static boolean checkNeedLogin(String principal) throws IOException {
         if (!UserGroupInformation.isSecurityEnabled()) {
             LOG.error(
-                "UserGroupInformation is not SecurityEnabled, please check if core-site.xml exists in classpath.");
+                    "UserGroupInformation is not SecurityEnabled, please check if core-site.xml exists in classpath.");
             throw new IOException(
-                "UserGroupInformation is not SecurityEnabled, please check if core-site.xml exists in classpath.");
+                    "UserGroupInformation is not SecurityEnabled, please check if core-site.xml exists in classpath.");
         }
         UserGroupInformation currentUser = UserGroupInformation.getCurrentUser();
         if ((currentUser != null) && (currentUser.hasKerberosCredentials())) {
@@ -138,9 +142,9 @@ public class LoginUtil {
                 return false;
             } else {
                 LOG.error("current user is " + currentUser
-                    + "has logined. please check your enviroment , especially when it used IBM JDK or kerberos for OS count login!!");
+                        + "has logined. please check your enviroment , especially when it used IBM JDK or kerberos for OS count login!!");
                 throw new IOException(
-                    "current user is " + currentUser + " has logined. And please check your enviroment!!");
+                        "current user is " + currentUser + " has logined. And please check your enviroment!!");
             }
         }
 
@@ -162,7 +166,7 @@ public class LoginUtil {
 
     public static void setJaasFile(String principal, String keytabPath) throws IOException {
         String jaasPath = new File(System.getProperty("java.io.tmpdir")) + File.separator + System.getProperty(
-            "user.name") + JAAS_POSTFIX;
+                "user.name") + JAAS_POSTFIX;
 
         // windows路径下分隔符替换
         jaasPath = jaasPath.replace("\\", "\\\\");
@@ -252,7 +256,7 @@ public class LoginUtil {
         }
 
         javax.security.auth.login.Configuration.setConfiguration(
-            new JaasConfiguration(loginContextName, principal, userKeytabFile.getCanonicalPath()));
+                new JaasConfiguration(loginContextName, principal, userKeytabFile.getCanonicalPath()));
 
         javax.security.auth.login.Configuration conf = javax.security.auth.login.Configuration.getConfiguration();
         if (!(conf instanceof JaasConfiguration)) {
@@ -263,9 +267,9 @@ public class LoginUtil {
         AppConfigurationEntry[] entrys = conf.getAppConfigurationEntry(loginContextName);
         if (entrys == null) {
             LOG.error(
-                "javax.security.auth.login.Configuration has no AppConfigurationEntry named " + loginContextName + ".");
+                    "javax.security.auth.login.Configuration has no AppConfigurationEntry named " + loginContextName + ".");
             throw new IOException(
-                "javax.security.auth.login.Configuration has no AppConfigurationEntry named " + loginContextName + ".");
+                    "javax.security.auth.login.Configuration has no AppConfigurationEntry named " + loginContextName + ".");
         }
 
         boolean checkPrincipal = false;
@@ -289,19 +293,19 @@ public class LoginUtil {
 
         if (!checkPrincipal) {
             LOG.error(
-                "AppConfigurationEntry named " + loginContextName + " does not have principal value of " + principal
-                    + ".");
+                    "AppConfigurationEntry named " + loginContextName + " does not have principal value of " + principal
+                            + ".");
             throw new IOException(
-                "AppConfigurationEntry named " + loginContextName + " does not have principal value of " + principal
-                    + ".");
+                    "AppConfigurationEntry named " + loginContextName + " does not have principal value of " + principal
+                            + ".");
         }
 
         if (!checkKeytab) {
             LOG.error("AppConfigurationEntry named " + loginContextName + " does not have keyTab value of " + keytabFile
-                + ".");
-            throw new IOException(
-                "AppConfigurationEntry named " + loginContextName + " does not have keyTab value of " + keytabFile
                     + ".");
+            throw new IOException(
+                    "AppConfigurationEntry named " + loginContextName + " does not have keyTab value of " + keytabFile
+                            + ".");
         }
 
     }
@@ -321,7 +325,7 @@ public class LoginUtil {
 
     @Deprecated
     public static void setZookeeperServerPrincipal(String zkServerPrincipalKey, String zkServerPrincipal)
-        throws IOException {
+            throws IOException {
         System.setProperty(zkServerPrincipalKey, zkServerPrincipal);
         String ret = System.getProperty(zkServerPrincipalKey);
         if (ret == null) {
@@ -424,10 +428,10 @@ public class LoginUtil {
         private static final Map<String, String> KEYTAB_KERBEROS_OPTIONS = new HashMap<String, String>();
 
         private static final AppConfigurationEntry KEYTAB_KERBEROS_LOGIN = new AppConfigurationEntry(
-            KerberosUtil.getKrb5LoginModuleName(), LoginModuleControlFlag.REQUIRED, KEYTAB_KERBEROS_OPTIONS);
+                KerberosUtil.getKrb5LoginModuleName(), LoginModuleControlFlag.REQUIRED, KEYTAB_KERBEROS_OPTIONS);
 
-        private static final AppConfigurationEntry[] KEYTAB_KERBEROS_CONF = new AppConfigurationEntry[] {
-            KEYTAB_KERBEROS_LOGIN
+        private static final AppConfigurationEntry[] KEYTAB_KERBEROS_CONF = new AppConfigurationEntry[]{
+                KEYTAB_KERBEROS_LOGIN
         };
 
         static {
@@ -465,7 +469,7 @@ public class LoginUtil {
         }
 
         private JaasConfiguration(String loginContextName, String principal, String keytabFile, boolean useTicketCache)
-            throws IOException {
+                throws IOException {
             try {
                 this.baseConfig = javax.security.auth.login.Configuration.getConfiguration();
             } catch (SecurityException e) {
@@ -478,7 +482,7 @@ public class LoginUtil {
 
             initKerberosOption();
             LOG.info("JaasConfiguration loginContextName=" + loginContextName + " principal=" + principal
-                + " useTicketCache=" + useTicketCache + " keytabFile=" + keytabFile);
+                    + " useTicketCache=" + useTicketCache + " keytabFile=" + keytabFile);
         }
 
         private void initKerberosOption() throws IOException {

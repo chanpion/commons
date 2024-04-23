@@ -10,6 +10,7 @@ import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.CompareOperator;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
@@ -30,7 +31,10 @@ import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.RowFilter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
+import org.apache.hadoop.hbase.regionserver.BloomType;
+import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +57,7 @@ import java.util.stream.Collectors;
 public class HbaseUtil {
     private final static Logger logger = LoggerFactory.getLogger(HbaseUtil.class);
     private static final Map<String, Connection> HBASE_CONN_POOL_MAP = new ConcurrentHashMap<>();
+    private static final Configuration HBASE_CONFIG = HBaseConfiguration.create();
 
     public static Connection getConnection(HbaseConf hbaseConf) throws IOException {
         return connect(hbaseConf);
@@ -65,7 +70,7 @@ public class HbaseUtil {
 
         String key = getKey(hbaseQuorum, hbaseZnode);
         Connection connection = HBASE_CONN_POOL_MAP.get(key);
-        if (connection == null) {
+        if (connection == null || connection.isClosed()) {
             synchronized (HBASE_CONN_POOL_MAP) {
                 connection = HBASE_CONN_POOL_MAP.get(key);
                 if (connection == null || connection.isClosed()) {
@@ -87,7 +92,7 @@ public class HbaseUtil {
 
                         //检查配置
                         HBaseAdmin.available(conf);
-                        connection = ConnectionFactory.createConnection(conf, KerberosUtil.getAuthenticatedUser(hbaseConf.getKrb5Path(), hbaseConf.getKeytabPath(), hbaseConf.getPrincipal(), false));
+                        connection = ConnectionFactory.createConnection(conf, KerberosUtil.getAuthenticatedUser(hbaseConf.getKrb5Path(), hbaseConf.getKeytabPath(), hbaseConf.getPrincipal()));
                     } else {
                         //检查配置
                         HBaseAdmin.available(conf);
@@ -128,11 +133,11 @@ public class HbaseUtil {
         List<ColumnFamilyDescriptor> columnFamilyDescriptors = Arrays.stream(columnFamily)
                 .map(cf -> ColumnFamilyDescriptorBuilder.newBuilder(Bytes.toBytes(cf)).build())
                 .collect(Collectors.toList());
-        // 添加列蔟
+        // 3. 添加列蔟
         tableDescriptorBuilder.setColumnFamilies(columnFamilyDescriptors);
         TableDescriptor tableDescriptor = tableDescriptorBuilder.build();
 
-        // 6. 创建表
+        // 4. 创建表
         admin.createTable(tableDescriptor);
     }
 
@@ -147,6 +152,7 @@ public class HbaseUtil {
             // 3. 删除表
             admin.deleteTable(table);
         }
+        admin.close();
     }
 
     public static void add(HbaseConf hbaseConf, String tableName, String rowKey, String columnFamily, String column, String value) throws IOException {
@@ -160,7 +166,16 @@ public class HbaseUtil {
         table.close();
     }
 
-    public static void deleteOne(HbaseConf hbaseConf, String tableName, String rowKey) throws IOException {
+    public static void add(HbaseConf hbaseConf, String tableName, String rowKey, String columnFamily, Map<String, Object> data) throws IOException {
+        Connection connection = connect(hbaseConf);
+        Table table = connection.getTable(TableName.valueOf(tableName));
+        Put put = new Put(Bytes.toBytes(rowKey));
+        data.forEach((k, v) -> put.addColumn(Bytes.toBytes(columnFamily), Bytes.toBytes(k), Bytes.toBytes(v.toString())));
+        table.put(put);
+        table.close();
+    }
+
+    public static void deleteRow(HbaseConf hbaseConf, String tableName, String rowKey) throws IOException {
         Connection connection = connect(hbaseConf);
         try (Table table = connection.getTable(TableName.valueOf(tableName))) {
             Delete delete = new Delete(Bytes.toBytes(rowKey));
@@ -196,11 +211,7 @@ public class HbaseUtil {
     public JSONObject queryByRowKey(String tableName, String rowKey, HbaseConf hbaseConf) throws Exception {
         JSONObject res = new JSONObject();
 
-        if (StringUtils.isBlank(rowKey)) {
-            return null;
-        }
-
-        if (StringUtils.isEmpty(hbaseConf.getHbaseHost()) || StringUtils.isEmpty(hbaseConf.getHbasePort())) {
+        if (StringUtils.isBlank(rowKey) || StringUtils.isEmpty(hbaseConf.getHbaseHost()) || StringUtils.isEmpty(hbaseConf.getHbasePort())) {
             return null;
         }
 
@@ -315,6 +326,119 @@ public class HbaseUtil {
             }
         }
         return res;
+    }
+
+    public static void scan(String tableName) throws IOException {
+        Configuration conf = HBaseConfiguration.create(HBASE_CONFIG);
+        Connection connection = ConnectionFactory.createConnection(HBASE_CONFIG, User.create(UserGroupInformation.getLoginUser()));
+        Table table = connection.getTable(TableName.valueOf(tableName));
+
+        System.out.println("scan");
+        Scan scan = new Scan();
+        scan.setOneRowLimit();
+        //todo workaround
+        scan.setMaxResultSize(5 * 1024);
+
+        ResultScanner rs = table.getScanner(scan);
+        Set<String> res = new HashSet<>();
+        for (Result r : rs) {
+            List<String> qualifier = r.listCells().stream()
+                    .map(cell -> Bytes.toString(CellUtil.cloneQualifier(cell)))
+                    .collect(Collectors.toList());
+            res.addAll(qualifier);
+        }
+        System.out.println(res);
+
+        HColumnDescriptor columnDescriptor = new HColumnDescriptor("");
+        columnDescriptor.setBloomFilterType(BloomType.ROW);
+    }
+
+    public static void getRow(String tableOfName) throws java.lang.Exception {
+        Configuration conf = HBaseConfiguration.create(HBASE_CONFIG);
+        Connection connection = ConnectionFactory.createConnection(HBASE_CONFIG, User.create(UserGroupInformation.getLoginUser()));
+
+        TableName tableName = TableName.valueOf(tableOfName);
+        //取得一个要操作的表
+        Table table = connection.getTable(tableName);
+
+        //设置要查询的行的rowkey
+        Get wangwu = new Get(Bytes.toBytes("wangwu"));
+
+        //设置显示多少个版本的数据
+        wangwu.setMaxVersions(3);
+
+        //取得指定时间戳的数据
+        //wangwu.setTimeStamp(1);
+
+        //限制要显示的列族
+        wangwu.addFamily(Bytes.toBytes("grade"));
+        //限制要显示的列
+        //wangwu.addColumn(Bytes.toBytes("course"), Bytes.toBytes("yuwen"));
+        Result result = table.get(wangwu);
+        List<Cell> cells = result.listCells();
+        for (Cell c : cells) {
+            //注意这里 CellUtil类的使用
+            System.out.print("行键:" + Bytes.toString(CellUtil.cloneRow(c)) + " ");
+            System.out.print("列族:" + Bytes.toString(CellUtil.cloneFamily(c)) + " ");
+            System.out.print("列:" + Bytes.toString(CellUtil.cloneQualifier(c)) + " ");
+            System.out.print("值:" + Bytes.toString(CellUtil.cloneValue(c)) + " ");
+            System.out.println();
+        }
+
+        //关闭资源
+        table.close();
+        //hbaseConn.close();
+    }
+
+    public static void getMultiRows(String tableOfName) throws java.lang.Exception {
+        Configuration conf = HBaseConfiguration.create(HBASE_CONFIG);
+        Connection connection = ConnectionFactory.createConnection(HBASE_CONFIG, User.create(UserGroupInformation.getLoginUser()));
+
+        TableName tableName = TableName.valueOf(tableOfName);
+        //取得一个要操作的表
+        Table table = connection.getTable(tableName);
+
+
+        ArrayList<Get> getArrayList = new ArrayList<>();
+
+        Get wangwu = new Get(Bytes.toBytes("wangwu"));
+        //限制要显示的列族
+        wangwu.addFamily(Bytes.toBytes("grade"));
+        //限制要显示的列
+        wangwu.addColumn(Bytes.toBytes("course"), Bytes.toBytes("yuwen"));
+
+        Get lishi = new Get(Bytes.toBytes("lishi"));
+
+        getArrayList.add(wangwu);
+        getArrayList.add(lishi);
+
+        Result[] results = table.get(getArrayList);
+        for (int i = 0; i < results.length; i++) {
+            Result result = results[i];
+            List<Cell> cells = result.listCells();
+            for (Cell c : cells) {
+                //注意这里 CellUtil类的使用
+                System.out.print("行键:" + Bytes.toString(CellUtil.cloneRow(c)) + " ");
+                System.out.print("列族:" + Bytes.toString(CellUtil.cloneFamily(c)) + " ");
+                System.out.print("列:" + Bytes.toString(CellUtil.cloneQualifier(c)) + " ");
+                System.out.print("值:" + Bytes.toString(CellUtil.cloneValue(c)) + " ");
+                System.out.println();
+            }
+        }
+        //关闭资源
+        table.close();
+        //hbaseConn.close();
+    }
+
+    public static void showData(Result result) {
+        while (result.advance()) {
+            Cell cell = result.current();
+            String row = Bytes.toString(CellUtil.cloneRow(cell));
+            String cf = Bytes.toString(CellUtil.cloneFamily(cell));
+            String qualifier = Bytes.toString(CellUtil.cloneQualifier(cell));
+            String val = Bytes.toString(CellUtil.cloneValue(cell));
+            System.out.println(row + "--->" + cf + "--->" + qualifier + "--->" + val);
+        }
     }
 
     public static void stringFilter(HbaseConf hbaseConf) throws IOException {

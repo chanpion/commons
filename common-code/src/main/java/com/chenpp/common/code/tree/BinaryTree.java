@@ -1,7 +1,9 @@
 package com.chenpp.common.code.tree;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
 /**
  * @author April Chen
@@ -14,18 +16,64 @@ public class BinaryTree {
      */
     public List<Integer> inorderTraversal(TreeNode root) {
         List<Integer> list = new ArrayList<>();
-        inorder(root, list);
+        inOrder(root, list);
         return list;
     }
 
 
-    public void inorder(TreeNode root, List<Integer> list) {
+    public void inOrder(TreeNode root, List<Integer> list) {
         if (root == null) {
             return;
         }
-        inorder(root.left, list);
+        inOrder(root.left, list);
         list.add(root.val);
-        inorder(root.right, list);
+        inOrder(root.right, list);
+    }
+
+    public void preorderTraversal(TreeNode node) {
+        if (node != null) {
+            // 访问根节点
+            System.out.print(node.val + " ");
+            // 遍历左子树
+            preorderTraversal(node.left);
+            // 遍历右子树
+            preorderTraversal(node.right);
+        }
+    }
+
+    /**
+     * 层次遍历 BFS，广度优先遍历
+     */
+    public List<List<Integer>> levelOrder(TreeNode root) {
+        List<List<Integer>> result = new ArrayList<>();
+        // 如果根节点为空，直接返回空列表
+        if (root == null) {
+            return result;
+        }
+
+        Queue<TreeNode> queue = new LinkedList<>();
+        queue.add(root);
+
+        while (!queue.isEmpty()) {
+            int levelSize = queue.size();
+            List<Integer> currentLevelValues = new ArrayList<>(levelSize);
+
+            for (int i = 0; i < levelSize; i++) {
+                TreeNode currentNode = queue.poll();
+                currentLevelValues.add(currentNode.val);
+
+                if (currentNode.left != null) {
+                    queue.add(currentNode.left);
+                }
+                if (currentNode.right != null) {
+                    queue.add(currentNode.right);
+                }
+            }
+            // 添加当前层节点值到结果列表
+            result.add(currentLevelValues);
+        }
+
+        return result;
     }
 
     /**
@@ -43,9 +91,6 @@ public class BinaryTree {
 
     /**
      * 对称二叉树
-     *
-     * @param root
-     * @return
      */
     public boolean isSymmetric(TreeNode root) {
         if (root == null) {
@@ -98,6 +143,9 @@ public class BinaryTree {
         return root;
     }
 
+    /**
+     * 是否是平衡树
+     */
     public boolean isBalanced(TreeNode root) {
         if (root == null) {
             return true;
@@ -105,6 +153,9 @@ public class BinaryTree {
         return Math.abs(height(root.left) - height(root.right)) <= 1 && isBalanced(root.left) && isBalanced(root.right);
     }
 
+    /**
+     * 树的高度
+     */
     public int height(TreeNode root) {
         if (root == null) {
             return 0;
@@ -145,19 +196,4 @@ public class BinaryTree {
         return hasPathSum(root.left, sum - root.val) || hasPathSum(root.right, sum - root.val);
     }
 
-    static class TreeNode {
-        int val;
-        TreeNode left;
-        TreeNode right;
-
-        TreeNode(int val) {
-            this.val = val;
-        }
-
-        TreeNode(int val, TreeNode left, TreeNode right) {
-            this.val = val;
-            this.left = left;
-            this.right = right;
-        }
-    }
 }

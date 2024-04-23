@@ -2,7 +2,6 @@ package com.chenpp.common.security;
 
 
 import com.chenpp.common.bigdata.hbase.HbaseConf;
-import com.chenpp.common.bigdata.hbase.HbaseUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.security.User;
@@ -96,12 +95,12 @@ public class KerberosUtil {
      * @param principal
      * @return
      */
-    public static UserGroupInformation checkKerberos(String krb5Path, String keytabPath, String principal, Boolean isJanusKerberos) {
+    public static UserGroupInformation checkKerberos(String krb5Path, String keytabPath, String principal) {
         if (StringUtils.isBlank(krb5Path) || StringUtils.isBlank(keytabPath) || StringUtils.isBlank(principal)) {
             return null;
         }
         System.setProperty("java.security.krb5.conf", krb5Path);
-        Configuration configuration = new Configuration(false);
+        Configuration configuration = new Configuration();
         UserGroupInformation userGroupInformation = null;
         try {
             sun.security.krb5.Config.refresh();
@@ -111,26 +110,22 @@ public class KerberosUtil {
                     "DEFAULT");
             UserGroupInformation.setConfiguration(configuration);
             LoginUtil.setJaasFile(principal, keytabPath);
-            if (isJanusKerberos) {
-                userGroupInformation = UserGroupInformation.loginUserFromKeytabAndReturnUGI(principal, keytabPath);
-            } else {
-                UserGroupInformation.loginUserFromKeytab(principal, keytabPath);
-            }
+            userGroupInformation = UserGroupInformation.loginUserFromKeytabAndReturnUGI(principal, keytabPath);
             if (LOG.isInfoEnabled()) {
                 LOG.info("kerberos authentication was successful");
             }
             return userGroupInformation;
-        } catch (Exception | Error e) {
+        } catch (Exception e) {
             LOG.error(String.format("kerberos auth error: principal=%s, keytabPath=%s, krb5Path=%s", principal, keytabPath, krb5Path), e);
             throw new RuntimeException("kerberos authentication exception", e);
         }
     }
 
 
-    public static User getAuthenticatedUser(String krb5Path, String keytabPath, String principal, Boolean isJanusKerberos) {
+    public static User getAuthenticatedUser(String krb5Path, String keytabPath, String principal) {
         User loginedUser = null;
         try {
-            checkKerberos(krb5Path, keytabPath, principal, isJanusKerberos);
+            checkKerberos(krb5Path, keytabPath, principal);
             loginedUser = User.create(UserGroupInformation.getLoginUser());
         } catch (IOException e) {
             LOG.error(String.format("kerberos auth error: principal=%s, keytabPath=%s, krb5Path=%s", principal, keytabPath, krb5Path), e);

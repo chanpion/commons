@@ -1,4 +1,4 @@
-package cn.tongdun.yuntu.common.util.es.restclient;
+package com.chenpp.common.es;
 
 import lombok.ToString;
 

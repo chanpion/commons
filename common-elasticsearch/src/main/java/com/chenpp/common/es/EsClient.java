@@ -1,42 +1,47 @@
 package com.chenpp.common.es;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.aggregations.HistogramBucket;
+import co.elastic.clients.elasticsearch._types.mapping.Property;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
+import co.elastic.clients.elasticsearch.core.DeleteResponse;
 import co.elastic.clients.elasticsearch.core.GetResponse;
 import co.elastic.clients.elasticsearch.core.IndexResponse;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.SearchTemplateResponse;
+import co.elastic.clients.elasticsearch.core.UpdateResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.TotalHits;
 import co.elastic.clients.elasticsearch.core.search.TotalHitsRelation;
+import co.elastic.clients.elasticsearch.indices.CreateIndexResponse;
+import co.elastic.clients.elasticsearch.indices.DeleteIndexResponse;
+import co.elastic.clients.elasticsearch.indices.GetIndexResponse;
 import co.elastic.clients.json.JsonData;
-import co.elastic.clients.json.jackson.JacksonJsonpMapper;
-import co.elastic.clients.transport.ElasticsearchTransport;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
+import co.elastic.clients.transport.endpoints.BooleanResponse;
 import co.elastic.clients.util.ObjectBuilder;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.Data;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.http.HttpHost;
-import org.elasticsearch.client.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Function;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
  * @author April.Chen
+ * @link https://www.elastic.co/guide/en/elasticsearch/client/java-api-client/current/getting-started-java.html
  * @date 2023/8/31 3:33 下午
  **/
 public class EsClient {
@@ -49,39 +54,76 @@ public class EsClient {
 
     private ElasticsearchClient esClient;
 
-    public void buildClient() throws IOException {
-        // Create the low-level client
-        RestClient restClient = RestClient.builder(
-                new HttpHost("localhost", 9200)).build();
 
-        // Create the transport with a Jackson mapper
-        ElasticsearchTransport transport = new RestClientTransport(
-                restClient, new JacksonJsonpMapper());
-
-        // And create the API client
-        ElasticsearchClient client = new ElasticsearchClient(transport);
-        logger.info("elasticsearch info: {}", client.info());
-        this.esClient = client;
+    public void buildClient(ElasticSearchProperties properties) throws IOException {
+        this.esClient = ElasticsearchClientFactory.buildClient(properties);
     }
 
-    public void search() throws IOException {
-        SearchResponse<Product> search = esClient.search(s -> s
-                        .index("products")
-                        .query(q -> q
-                                .term(t -> t
-                                        .field("name")
-                                        .value(v -> v.stringValue("bicycle"))
-                                )),
-                Product.class);
-
-        for (Hit<Product> hit : search.hits().hits()) {
-            processProduct(hit.source());
-        }
+    public ElasticsearchClient getElasticsearchClient(){
+        return esClient;
     }
+    public void createIndexWithMapping(String indexName, Map<String, Object> mapping) throws IOException {
+        CreateIndexResponse createIndexResponse = esClient.indices()
+                .create(createIndexRequest ->
+                        createIndexRequest.index(indexName)
+                                // 用 lambda 的方式 下面的 mapping 会覆盖上面的 mapping
+                                .mappings(typeMapping ->
+                                        typeMapping.properties("name", objectBuilder ->
+                                                objectBuilder.text(textProperty -> textProperty.fielddata(true))
+                                        ).properties("age", objectBuilder ->
+                                                objectBuilder.integer(integerNumberProperty -> integerNumberProperty.index(true))
+                                        ).properties("birthday", objectBuilder -> objectBuilder.date(dateProperty -> dateProperty.format("yyyy-MM-dd HH:mm:ss")))
+                                )
+                );
+
+        logger.info("== {} 索引创建是否成功: {}", indexName, createIndexResponse.acknowledged());
+    }
+
 
     public void createIndex(String index, int numberOfShards, int numberOfReplicas) throws IOException {
-        esClient.indices().create(c -> c.index(index));
+        esClient.indices().create(c -> c.settings(s -> s.numberOfShards(String.valueOf(numberOfShards)).numberOfReplicas(String.valueOf(numberOfReplicas))).index(index));
 
+    }
+
+    public void existsIndex(String indexName) throws IOException {
+        BooleanResponse booleanResponse = esClient.indices()
+                .exists(existsRequest ->
+                        existsRequest.index(indexName)
+                );
+
+        logger.info("== {} 索引创建是否存在: {}", indexName, booleanResponse.value());
+    }
+
+    public void indexDetail(String indexName) throws IOException {
+        GetIndexResponse getIndexResponse = esClient.indices()
+                .get(getIndexRequest ->
+                        getIndexRequest.index(indexName)
+                );
+
+        Map<String, Property> properties = getIndexResponse.get(indexName).mappings().properties();
+
+        for (String key : properties.keySet()) {
+            logger.info("== {} 索引的详细信息为: == key: {}, Property: {}", indexName, key, properties.get(key)._kind());
+        }
+
+    }
+
+    public void putMapping(String indexName, Map<String, Property> mapping) throws IOException {
+        esClient.indices()
+                .putMapping(putMappingRequest ->
+                        putMappingRequest.index(indexName)
+                                .properties(mapping)
+                );
+    }
+
+
+    public void deleteIndex(String indexName) throws IOException {
+        DeleteIndexResponse deleteIndexResponse = esClient.indices()
+                .delete(deleteIndexRequest ->
+                        deleteIndexRequest.index(indexName)
+                );
+
+        logger.info("== {} delete index successfully: {}", indexName, deleteIndexResponse.acknowledged());
     }
 
     public <T> void addDoc(String index, T data) {
@@ -90,7 +132,7 @@ public class EsClient {
                     .index(index)
                     .document(data)
             );
-            logger.info("Indexed with version " + response.version());
+            logger.info("Indexed with version {}", response.version());
         } catch (IOException e) {
             logger.error("es add doc error", e);
         }
@@ -133,27 +175,54 @@ public class EsClient {
             );
 
             if (!response.found()) {
-                logger.info("Product not found");
+                logger.info("document not found");
             }
             return response.source();
         } catch (IOException e) {
-            logger.error("es get doc error", e);
+            logger.error("es get document error", e);
         }
         return null;
     }
 
-    public <T> T getDocById(String index, String docId, Class<T> clazz) throws Exception {
+    public <T> T getDocById(String index, String docId, Class<T> clazz) throws IOException {
         GetResponse<T> response = esClient.get(g -> g.index(index).id(docId), clazz);
-
         if (response.found()) {
             return response.source();
         } else {
-            logger.info("Product not found");
+            logger.info("document not found");
         }
         return null;
     }
 
-    public <T> List<T> search(String index, String field, String searchText, Class<T> clazz) throws IOException {
+    public <T> void updateDoc(String indexName, String docId, T data) throws IOException {
+        UpdateResponse<Product> updateResponse = esClient.update(updateRequest ->
+                updateRequest.index(indexName).id(docId)
+                        .doc(data), Product.class
+        );
+        logger.info("== response: {}, responseStatus: {}", updateResponse, updateResponse.result());
+    }
+
+    public void deleteDoc(String indexName, String docId) throws IOException {
+        DeleteResponse deleteResponse = esClient.delete(deleteRequest ->
+                deleteRequest.index(indexName).id(docId)
+        );
+        logger.info("== response: {}, result:{}", deleteResponse, deleteResponse.result());
+
+    }
+
+    public <T> List<T> termQuery(String indexName, String field, String value, Class<T> clazz) throws IOException {
+        SearchResponse<T> response = esClient.search(s -> s
+                        .index(indexName)
+                        .query(q -> q
+                                .term(t -> t
+                                        .field(field)
+                                        .value(v -> v.stringValue(value))
+                                )),
+                clazz);
+        return response.hits().hits().stream().map(Hit::source).collect(Collectors.toList());
+    }
+
+    public <T> List<T> matchQuery(String index, String field, String searchText, Class<T> clazz) throws IOException {
         SearchResponse<T> response = esClient.search(s -> s
                         .index(index)
                         .query(q -> q
@@ -171,9 +240,9 @@ public class EsClient {
         boolean isExactResult = total.relation() == TotalHitsRelation.Eq;
 
         if (isExactResult) {
-            logger.info("There are " + total.value() + " results");
+            logger.info("There are {} results", total.value());
         } else {
-            logger.info("There are more than " + total.value() + " results");
+            logger.info("There are more than {} results", total.value());
         }
 
         return response.hits().hits().stream().map(Hit::source).collect(Collectors.toList());
@@ -181,11 +250,7 @@ public class EsClient {
 
     public <T> List<T> search(String index, ObjectBuilder<Query> queryBuilder, Class<T> clazz) {
         try {
-            SearchResponse<T> response = esClient.search(s -> s
-                            .index(index)
-                            .query(q -> queryBuilder),
-                    clazz
-            );
+            SearchResponse<T> response = esClient.search(s -> s.index(index).query(q -> queryBuilder), clazz);
             return response.hits().hits().stream().map(Hit::source).collect(Collectors.toList());
         } catch (IOException e) {
             logger.error("es search error", e);
@@ -193,21 +258,72 @@ public class EsClient {
         return Collections.emptyList();
     }
 
+    public void multipleConditionSearch(String indexName) throws IOException {
+
+        SearchRequest request = SearchRequest.of(searchRequest ->
+                searchRequest.index(indexName).from(0).size(20).sort(s -> s.field(f -> f.field("age").order(SortOrder.Desc)))
+                        // 如果有多个 .query 后面的 query 会覆盖前面的 query
+                        .query(query ->
+                                query.bool(boolQuery ->
+                                        boolQuery
+                                                // 在同一个 boolQuery 中 must 会将 should 覆盖
+                                                .must(must -> must.range(
+                                                        e -> e.field("age").gte(JsonData.of("21")).lte(JsonData.of("25"))
+                                                ))
+                                                .mustNot(mustNot -> mustNot.term(
+                                                        e -> e.field("name").value(value -> value.stringValue("lisi1"))
+                                                ))
+                                                .should(must -> must.term(
+                                                        e -> e.field("name").value(value -> value.stringValue("lisi2"))
+                                                ))
+                                )
+                        )
+
+        );
+
+        SearchRequest shouldRequest = SearchRequest.of(searchRequest ->
+                searchRequest.index(indexName).from(0).size(20).sort(s -> s.field(f -> f.field("age").order(SortOrder.Desc)))
+                        .query(query ->
+                                query.bool(boolQuery ->
+                                        boolQuery
+                                                // 两个 should 连用是没有问题的
+                                                .should(must -> must.term(
+                                                        e -> e.field("age").value(value -> value.stringValue("22"))
+                                                ))
+                                                .should(must -> must.term(
+                                                        e -> e.field("age").value(value -> value.stringValue("23"))
+                                                ))
+                                )
+                        ));
+
+
+        SearchResponse<Product> searchResponse = esClient.search(request, Product.class);
+
+
+        logger.info("返回的总条数有：{}", searchResponse.hits().total().value());
+        List<Hit<Product>> hitList = searchResponse.hits().hits();
+        for (Hit<Product> hit : hitList) {
+            logger.info("== hit: {}, id: {}", hit.source(), hit.id());
+        }
+
+    }
+
+
     public void searchNested() throws Exception {
         //tag::search-nested
         String searchText = "bike";
         double maxPrice = 200.0;
 
         // Search by product name
-        MatchQuery byName = MatchQuery.of(m -> m // <1>
+        MatchQuery byName = MatchQuery.of(m -> m
                 .field("name")
                 .query(searchText)
-        ); // <2>
+        );
 
         // Search by max price
         RangeQuery byMaxPrice = RangeQuery.of(r -> r
                 .field("price")
-                .gte(JsonData.of(maxPrice)) // <3>
+                .gte(JsonData.of(maxPrice))
         );
 
         BoolQuery boolQuery = BoolQuery.of(b -> b.must(builder -> builder.match(byName)).must(builder -> builder.range(byMaxPrice)));

@@ -34,7 +34,7 @@ public class PropertyUtil {
             logger.error("出现IOException", e);
         }
         logger.info("加载properties文件内容完成...........");
-        logger.info("properties文件内容：" + props);
+        logger.info("properties文件内容：{}", props);
     }
 
     /**
