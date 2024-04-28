@@ -40,7 +40,6 @@ public class HdfsUtil {
     private final static long TB = KB * GB;
     public static final String DFS_NAME_NODE_RPC_ADDRESS = "dfs.namenode.rpc-address.";
 
-
     /**
      * get FileSystem
      *
@@ -60,8 +59,6 @@ public class HdfsUtil {
 
     public static Configuration buildConfiguration(HdfsConf hdfsConf) {
         Configuration configuration = new Configuration(false);
-//        configuration.addResource("core-site.xml");
-//        configuration.addResource("hdfs-site.xml");
         String nameService = hdfsConf.getNameService();
 
         String nn1 = hdfsConf.getNameNode1();
@@ -80,14 +77,16 @@ public class HdfsUtil {
                 "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider");
         configuration.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
         configuration.set("dfs.client.use.datanode.hostname", "true");
+        if (hdfsConf.getKerberosConf() != null) {
+            //需要增加hadoop开启了安全的配置
+            configuration.setBoolean("hadoop.security.authorization", true);
+            configuration.set("hadoop.security.authentication", "kerberos");
+            //设置namenode的principal
+            configuration.set("dfs.namenode.kerberos.principal", hdfsConf.getKerberosConf().getNameNodePrincipal());
+            //设置datanode的principal值为“hdfs/_HOST@YOU-REALM.COM”
+            configuration.set("dfs.datanode.kerberos.principal", hdfsConf.getKerberosConf().getDataNodePrincipal());
+        }
 
-        //需要增加hadoop开启了安全的配置
-        configuration.setBoolean("hadoop.security.authorization", true);
-        configuration.set("hadoop.security.authentication", "kerberos");
-        //设置namenode的principal
-        configuration.set("dfs.namenode.kerberos.principal", "nn/_HOST@yuntu.com");
-        //设置datanode的principal值为“hdfs/_HOST@YOU-REALM.COM”
-        configuration.set("dfs.datanode.kerberos.principal", "dn/_HOST@yuntu.com");
         return configuration;
     }
 

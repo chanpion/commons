@@ -67,6 +67,10 @@ public class LoginUtil {
 
     private static final boolean IS_IBM_JDK = System.getProperty("java.vendor").contains("IBM");
 
+    public static void login(String userPrincipal, String userKeytabPath, String krb5ConfPath) throws IOException {
+        login(userPrincipal, userKeytabPath, krb5ConfPath, new Configuration());
+    }
+
     public synchronized static void login(String userPrincipal, String userKeytabPath, String krb5ConfPath,
                                           Configuration conf) throws IOException {
         // 1.check input parameters

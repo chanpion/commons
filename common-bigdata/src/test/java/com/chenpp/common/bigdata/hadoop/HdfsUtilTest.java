@@ -1,7 +1,5 @@
 package com.chenpp.common.bigdata.hadoop;
 
-import com.chenpp.common.security.KerberosConf;
-import com.chenpp.common.security.KerberosUtil;
 import com.chenpp.common.security.LoginUtil;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -23,26 +21,27 @@ import java.util.List;
 public class HdfsUtilTest {
     private HdfsConf hdfsConf;
     private FileSystem fileSystem;
-    private KerberosConf kerberosConf;
+    private HdfsKerberosConf kerberosConf;
 
     @Before
     public void init() throws IOException {
-        kerberosConf = new KerberosConf();
+        kerberosConf = new HdfsKerberosConf();
         kerberosConf.setKerberosEnable(true);
         kerberosConf.setPrincipal("admin/admin@yuntu.com");
         kerberosConf.setKeytabPath("/Users/chenpp/bigdata/60/ark3/admin.keytab");
         kerberosConf.setKrb5Path("/Users/chenpp/bigdata/60/ark3/krb5.conf");
-
-//        KerberosUtil.checkKerberos(kerberosConf.getKrb5Path(), kerberosConf.getKeytabPath(), kerberosConf.getPrincipal());
+        kerberosConf.setNameNodePrincipal("nn/_HOST@yuntu.com");
+        kerberosConf.setDataNodePrincipal("dn/_HOST@yuntu.com");
 
 
         hdfsConf = new HdfsConf();
         hdfsConf.setNameService("ns60");
         hdfsConf.setNameNode1("yuntu-qiye-e-010058012060.hz.td:8020");
         hdfsConf.setNameNode2("yuntu-qiye-e-010058012061.hz.td:8020");
+        hdfsConf.setKerberosConf(kerberosConf);
 
         Configuration configuration = HdfsUtil.buildConfiguration(hdfsConf);
-        LoginUtil.setJaasFile(kerberosConf.getPrincipal(), kerberosConf.getKeytabPath());
+//        LoginUtil.setJaasFile(kerberosConf.getPrincipal(), kerberosConf.getKeytabPath());
         LoginUtil.login(kerberosConf.getPrincipal(), kerberosConf.getKeytabPath(), kerberosConf.getKrb5Path(), configuration);
 
         fileSystem = HdfsUtil.getInstance(hdfsConf);

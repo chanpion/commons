@@ -1,10 +1,14 @@
 package com.chenpp.common.bigdata.hadoop;
 
+import com.chenpp.common.security.KerberosConf;
+import lombok.Data;
+
 /**
  * @author April.Chen
  * @date 2024/2/18 17:28
  */
-public class HdfsKerberosConf {
+@Data
+public class HdfsKerberosConf extends KerberosConf {
     /**
      * 是否开启Kerberos认证
      */

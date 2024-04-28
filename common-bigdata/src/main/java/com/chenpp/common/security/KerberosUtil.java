@@ -1,7 +1,7 @@
 package com.chenpp.common.security;
 
 
-import com.chenpp.common.bigdata.hbase.HbaseConf;
+import com.chenpp.common.bigdata.hbase.HBaseConf;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.security.User;
@@ -59,7 +59,7 @@ public class KerberosUtil {
     }
 
 
-    public static User checkKerberos(Configuration conf, HbaseConf hbaseConf) {
+    public static User checkKerberos(Configuration conf, HBaseConf hbaseConf) {
         if (conf == null) {
             conf = new Configuration();
         }

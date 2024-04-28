@@ -7,7 +7,7 @@ import lombok.Data;
  * @date 2023/11/6 10:37 上午
  **/
 @Data
-public class HbaseConf {
+public class HBaseConf {
 
     private String hbasePort;
     private String hbaseHost;

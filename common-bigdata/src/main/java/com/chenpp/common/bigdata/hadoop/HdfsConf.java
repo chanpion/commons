@@ -16,4 +16,6 @@ public class HdfsConf {
     private String nameNode1;
     private String nameNode2;
 
+    private HdfsKerberosConf kerberosConf;
+
 }

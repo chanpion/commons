@@ -1,6 +1,7 @@
 package com.chenpp.common.bigdata.hive;
 
 import com.alibaba.fastjson.JSONObject;
+import com.chenpp.common.bigdata.entity.Constants;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hive.jdbc.HiveQueryResultSet;
 import org.apache.hive.jdbc.HiveResultSetMetaData;
@@ -16,6 +17,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @author April.Chen
@@ -26,10 +28,10 @@ public class HiveJdbcClient {
 
     private static final String HIVE_DRIVER = "org.apache.hive.jdbc.HiveDriver";
 
-    private Connection getConnection(HiveConf hiveJdbcConf) throws SQLException, ClassNotFoundException {
+    public Connection getConnection(HiveConf hiveJdbcConf) throws SQLException, ClassNotFoundException {
         Class.forName(HIVE_DRIVER);
-        if ("KERBEROS".equalsIgnoreCase(hiveJdbcConf.getAuth())) {
-            return DriverManager.getConnection(hiveJdbcConf.getJdbcUrl(), "", "");
+        if (Constants.KERBEROS.equalsIgnoreCase(hiveJdbcConf.getAuth())) {
+            return DriverManager.getConnection(hiveJdbcConf.getJdbcUrl(), null, null);
         } else {
             return DriverManager.getConnection(hiveJdbcConf.getJdbcUrl(), hiveJdbcConf.getUsername(), hiveJdbcConf.getPassword());
         }
@@ -149,15 +151,47 @@ public class HiveJdbcClient {
         return hiveDataList;
     }
 
-    public void query(HiveConf hiveConf, String sql) {
+    public List<JSONObject> query(HiveConf hiveConf, String sql) {
+        List<JSONObject> hiveDataList = new ArrayList<>();
         try (Connection connection = getConnection(hiveConf);
              PreparedStatement statement = connection.prepareStatement(sql)) {
             ResultSet rs = statement.executeQuery();
-            while (rs.next()) {
-                System.out.println(rs.getInt(1) + "-------" + rs.getString(2));
+            HiveQueryResultSet hs = (HiveQueryResultSet) rs;
+            HiveResultSetMetaData data = (HiveResultSetMetaData) hs.getMetaData();
+            int cols = data.getColumnCount();
+            while (hs.next()) {
+                JSONObject dataJson = new JSONObject();
+                for (int i = 1; i <= cols; i++) {
+                    String colName = data.getColumnName(i);
+                    Object obj = hs.getObject(colName);
+                    dataJson.put(colName, obj);
+                }
+                hiveDataList.add(dataJson);
             }
         } catch (Exception e) {
             logger.error("hive query error", e);
         }
+        return hiveDataList;
+    }
+
+    public List<String> showTables(HiveConf hiveConf, String database) {
+        String sql = String.format("show tables in %s", database);
+        List<JSONObject> result = query(hiveConf, sql);
+        return result.stream().map(item -> item.getString("tab_name")).collect(Collectors.toList());
+    }
+
+
+    public void truncateTable(HiveConf hiveConf, String tableName) {
+        String sql = "truncate table " + tableName;
+        try (Connection connection = getConnection(hiveConf);
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.execute();
+        } catch (Exception e) {
+            logger.error("hive truncate table error", e);
+        }
+    }
+
+    public void insert(HiveConf hiveConf, String tableName, List<JSONObject> dataList) {
+
     }
 }
