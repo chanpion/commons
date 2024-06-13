@@ -8,6 +8,15 @@ import java.util.Map;
  * @date 2023/11/8 7:05 下午
  **/
 public class TrieTree {
+    private TrieNode root;
+
+    public TrieTree() {
+        root = new TrieNode();
+    }
+
+    public void insert(String word) {
+        insert(root, word);
+    }
 
     public void insert(TrieNode root, String word) {
         //遍历该字符串的字符数组
@@ -21,6 +30,11 @@ public class TrieTree {
         }
         //遍历字符串完毕，最后的节点isEnd置为true，表示一个字符串的结束
         root.isEnd = true;
+    }
+
+    public boolean search(String word) {
+        TrieNode end = searchPrefix(root, word);
+        return end != null && end.isEnd;
     }
 
     /**
@@ -87,5 +101,19 @@ public class TrieTree {
         public void setEnd(boolean end) {
             isEnd = end;
         }
+    }
+
+
+    public static void main(String[] args) {
+        TrieTree trie = new TrieTree();
+        trie.insert("apple");
+        trie.insert("app");
+        trie.insert("apply");
+
+        System.out.println(trie.search("apple")); // 输出: true
+        System.out.println(trie.search("app")); // 输出: true
+        System.out.println(trie.search("apply")); // 输出: true
+        System.out.println(trie.search("ape")); // 输出: false
+        System.out.println(trie.search("ap")); // 输出: false
     }
 }

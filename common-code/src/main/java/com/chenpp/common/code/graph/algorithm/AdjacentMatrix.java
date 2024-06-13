@@ -9,6 +9,9 @@ import java.util.PriorityQueue;
  * @date 2024/4/23 15:55
  */
 public class AdjacentMatrix {
+    /**
+     * 邻接矩阵
+     */
     static int[][] graph;
     static int[] dist;
     static int[] path = new int[7];
@@ -37,11 +40,17 @@ public class AdjacentMatrix {
             for (int j = 0; j < graph[i].length; j++) {
                 if (graph[i][j] != 0 && !isVisited[j]) {
                     //更新dist、path
-                    flashDistAndPath(i, j);
+                    if (!isVisited[j] && graph[i][j] >= 0 && graph[i][j] + dist[i] < dist[j]) {
+                        dist[j] = graph[i][j] + dist[i];
+                        path[j] = j;
+                    }
                 }
             }
         }
+        System.out.println("dijkstra: ");
         System.out.println(Arrays.toString(dist));
+        System.out.println("path: ");
+        System.out.println(Arrays.toString(path));
     }
 
     public static int findMin() {
@@ -56,17 +65,6 @@ public class AdjacentMatrix {
         return index;
     }
 
-    /**
-     * 之前的dist值一定是之前该节点到根节点的最短路径开销
-     */
-    public static void flashDistAndPath(int i, int j) {
-        if (!isVisited[j] && graph[i][j] >= 0) {
-            if (graph[i][j] + dist[i] < dist[j]) {
-                dist[j] = graph[i][j] + dist[i];
-                path[j] = j;
-            }
-        }
-    }
 
     public static boolean isOver() {
         for (boolean visited : isVisited) {
@@ -114,29 +112,25 @@ public class AdjacentMatrix {
             for (int i = 0; i < n; i++) {
                 for (int j = 0; j < n; j++) {
                     // 如果节点i到节点j通过节点k的路径比已知路径更短，则更新dist[i][j]
-                    if (dist[i][k] != 0 && dist[k][j] != 0 &&
-                            dist[i][k] + dist[k][j] < dist[i][j]) {
+                    if (dist[i][k] != -1 && dist[k][j] != -1 && dist[i][k] + dist[k][j] < dist[i][j] || dist[i][j] == -1) {
                         dist[i][j] = dist[i][k] + dist[k][j];
                     }
                 }
             }
         }
-
-        //打印
-        System.out.print("floyd: \n");
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                System.out.printf("%5d  ", dist[i][j]);
+        System.out.println("====distance====");
+        for (int[] ints : dist) {
+            for (int anInt : ints) {
+                System.out.print(anInt + " ");
             }
-            System.out.print("\n");
+            System.out.println();
         }
     }
 
     public static void floyd2(int[][] graph) {
-        int n = graph.length;
         //初始化距离矩阵 distance
+        int n = graph.length;
         int[][] distance = new int[n][n];
-
         for (int i = 0; i < n; i++) {
             distance[i] = Arrays.copyOf(graph[i], n);
         }
@@ -153,7 +147,7 @@ public class AdjacentMatrix {
             //所有入度
             for (int j = 0; j < n; j++) {
                 //所有出度
-                for (int k = 0; k < graph[j].length; k++) {
+                for (int k = 0; k < n; k++) {
                     //以每个点为「中转」，刷新所有出度和入度之间的距离
                     //例如 AB + BC < AC 就刷新距离
                     if (distance[j][i] != -1 && distance[i][k] != -1) {
@@ -188,6 +182,7 @@ public class AdjacentMatrix {
 
 
     public static void testFloyd() {
+        init();
         int[][] graph = new int[][]{
                 {0, 2, -1, 6}
                 , {2, 0, 3, 2}
@@ -200,28 +195,29 @@ public class AdjacentMatrix {
             }
             System.out.println();
         }
+        floyd(graph);
         floyd2(graph);
     }
 
     public static void main(String[] args) {
-//        testFloyd();
-        init();
-        isVisited[0] = true;
-        dist[1] = 1;
-        dist[2] = 4;
-        dist[3] = 3;
+        testFloyd();
+//        init();
+//        isVisited[0] = true;
+//        dist[1] = 1;
+//        dist[2] = 4;
+//        dist[3] = 3;
+//
+//        path[1] = 0;
+//        path[2] = 0;
+//        path[3] = 0;
+//
+//        graph = new int[][]{
+//                {0, 2, -1, 6}
+//                , {2, 0, 3, 2}
+//                , {-1, 3, 0, 2}
+//                , {6, 2, 2, 0}};
 
-        path[1] = 0;
-        path[2] = 0;
-        path[3] = 0;
-
-        graph = new int[][]{
-                {0, 2, -1, 6}
-                , {2, 0, 3, 2}
-                , {-1, 3, 0, 2}
-                , {6, 2, 2, 0}};
-
-        dijkstra();
+//        dijkstra();
 //        floyd(graph);
     }
 }

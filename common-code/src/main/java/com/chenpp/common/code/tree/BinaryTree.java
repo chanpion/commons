@@ -30,6 +30,9 @@ public class BinaryTree {
         inOrder(root.right, list);
     }
 
+    /**
+     * 前序遍历
+     */
     public void preorderTraversal(TreeNode node) {
         if (node != null) {
             // 访问根节点
