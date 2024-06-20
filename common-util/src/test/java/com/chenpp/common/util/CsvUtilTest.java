@@ -22,12 +22,12 @@ public class CsvUtilTest {
     @Test
     public void testWriteCsv() {
         String filePath = "/Users/chenpp/Downloads/test.csv";
-        String[] headers = {"姓名", "年龄"};
-
+//        String[] headers = {"姓名", "年龄"};
+        String[] headers = null;
         List<List<Object>> records = Arrays.asList(
                 Arrays.asList("张三", 18),
                 Arrays.asList("李四", 19)
         );
-        CsvUtil.writeCsv(filePath, records, headers, ",");
+        CsvUtil.writeCsv(filePath, records, headers);
     }
 }

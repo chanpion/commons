@@ -20,6 +20,7 @@ import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -60,28 +61,28 @@ public class CsvUtil {
         return null;
     }
 
-    public static void writeCsv(String filePath, Iterable<?> records, String[] headers) {
-        writeCsv(filePath, records, headers, DEFAULT_SEPARATOR);
+    public static void writeCsv(String filePath, Collection<?> records, String[] headers) {
+        writeCsv(filePath, records, headers, DEFAULT_SEPARATOR, false);
     }
 
-    public static void writeCsv(String filePath, Iterable<?> records, String[] headers, String delimiter) {
+    public static void writeCsv(String filePath, Collection<?> records, String[] headers, String delimiter, boolean append) {
         CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
                 .setHeader(headers)
                 .setRecordSeparator("\r\n")
                 .setDelimiter(delimiter)
                 .build();
 
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filePath), StandardCharsets.UTF_8))) {
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filePath, append), StandardCharsets.UTF_8))) {
             //防止乱码
             writer.write(new String(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF}, StandardCharsets.UTF_8));
             CSVPrinter csvPrinter = csvFormat.print(writer);
             csvPrinter.printRecords(records);
 //            records.forEach(record -> {
 //                try {
-//                    Collection list = (Collection) record;
+//                    Collection<?> list = (Collection) record;
 //                    csvPrinter.printRecord(list);
 //                } catch (IOException e) {
-//                    throw new RuntimeException(e);
+//                    log.error("writer csv error", e);
 //                }
 //            });
             csvPrinter.flush();
@@ -97,6 +98,6 @@ public class CsvUtil {
             return;
         }
         String[] headers = records.get(0).keySet().toArray(new String[0]);
-        writeCsv(filePath, records.stream().map(Map::values).collect(Collectors.toList()), headers, DEFAULT_SEPARATOR);
+        writeCsv(filePath, records.stream().map(Map::values).collect(Collectors.toList()), headers, DEFAULT_SEPARATOR, false);
     }
 }
