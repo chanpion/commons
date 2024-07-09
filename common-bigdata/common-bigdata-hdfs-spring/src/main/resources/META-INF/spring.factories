@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=com.chenpp.common.bigdata.hdfs.HdfsAutoConfiguration
+#org.springframework.boot.context.properties.ConfigurationPropertiesBinding=com.chenpp.common.bigdata.hdfs.HdfsProperties

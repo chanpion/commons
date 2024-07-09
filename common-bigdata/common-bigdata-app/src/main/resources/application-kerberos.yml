@@ -1,0 +1,26 @@
+common:
+  bigdata:
+    hdfs:
+      nameService: ns60
+      nameNodes:
+        nn1: 10.58.12.60:8020
+        nn2: 10.58.12.61:8020
+      nameNodePrincipal: nn/_HOST@TEST.com
+      dataNodePrincipal: dn/_HOST@TEST.com
+      kerberosConf:
+        kerberosEnable: true
+        krb5Path: /Users/chenpp/bigdata/60/krb5.conf
+        keytabPath: /Users/chenpp/bigdata/60/admin.keytab
+        principal: admin/admin
+    hive:
+      auth: kerberos
+      jdbcUrl: jdbc:hive2://10.58.12.60:2181,10.58.12.61:2181,10.58.12.62:2181/default;principal=hive/_HOST@TEST.com;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2
+      pool:
+        maxTotal: 20
+        minIdle: 1
+        maxIdle: 10
+      kerberosConf:
+        kerberosEnable: true
+        krb5Path: /Users/chenpp/bigdata/60/krb5.conf
+        keytabPath: /Users/chenpp/bigdata/60/admin.keytab
+        principal: admin/admin
